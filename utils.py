@@ -12,6 +12,28 @@ import zipfile
 # API Keys
 NEWSDATA_API_KEY = os.getenv("NEWSDATA_API_KEY")
 OPENWEATHER_API_KEY = os.getenv("OPENWEATHER_API_KEY")
+NOAA_API_TOKEN = os.getenv("NOAA_API_TOKEN", "VhYxCHiiOUNEgVHGgCXkSfebkcCHYdyB")
+
+def get_noaa_climate_data(dataset_id, start_date, end_date):
+    """Fetch climate data from NOAA API V2"""
+    try:
+        headers = {
+            'token': NOAA_API_TOKEN
+        }
+        url = f"https://www.ncdc.noaa.gov/cdo-web/api/v2/data"
+        params = {
+            'datasetid': dataset_id,
+            'startdate': start_date,
+            'enddate': end_date,
+            'limit': 1000
+        }
+        
+        response = requests.get(url, headers=headers, params=params)
+        response.raise_for_status()
+        return response.json()
+    except Exception as e:
+        st.error(f"Failed to fetch NOAA data: {str(e)}")
+        return None
 
 # News functions
 @st.cache_data(ttl=3600)
@@ -548,7 +570,7 @@ def get_air_quality_data(location="Global"):
         location_lower = location.lower()
         country_code = location_mapping.get(location_lower, "GLOBAL")
         
-        # World Bank PM2.5 air pollution, mean annual exposure dataset
+        # World Bank V2 API endpoint for PM2.5 air pollution data
         wb_url = f"https://api.worldbank.org/v2/country/{country_code}/indicator/EN.ATM.PM25.MC.ZS?format=json&per_page=100"
         
         response = requests.get(wb_url)
