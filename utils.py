@@ -458,9 +458,10 @@ def get_climate_events_data():
         })
         
         return df
-            # Parse the CSV data
-            import io
-            df_raw = pd.read_csv(io.StringIO(response.text))
+
+    # Parse the CSV data
+    import io
+    df_raw = pd.read_csv(io.StringIO(response.text))
             
             # Group by year and disaster type to get counts
             if 'Year' in df_raw.columns and 'Disaster Type' in df_raw.columns:
