@@ -7,9 +7,9 @@ enableXsrfProtection = true
 
 [theme]
 primaryColor = "#4CAF50"
-backgroundColor = "#FFFFFF"
-secondaryBackgroundColor = "#F0F2F6"
-textColor = "#262730"
+backgroundColor = "#262730"
+secondaryBackgroundColor = "#1E1E1E"
+textColor = "#FAFAFA"
 font = "sans serif"
 
 [browser]
@@ -19,4 +19,4 @@ gatherUsageStats = false
 fastRerenderThreshold = 1000
 
 [client]
-toolbarMode = "minimal"
+toolbarMode = "minimal" 

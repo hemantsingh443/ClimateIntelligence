@@ -33,7 +33,7 @@ def switch_theme(theme):
 
 # Sidebar
 with st.sidebar:
-    st.title("Climate Insights")
+    st.title("Climate Monitoring System")
     
     # Dark/light mode toggle
     st.write("Theme changes require page refresh")
@@ -73,10 +73,10 @@ with st.sidebar:
             st.switch_page(page_path)
     
     st.divider()
-    st.caption("© 2023 Climate Insights")
+    st.caption("© 2023 Climate Monitoring System")
 
 # Main content
-st.title("Climate Insights")
+st.title("Climate Monitoring System")
 st.subheader("Tracking Our Changing Planet")
 
 # Overview section
@@ -84,7 +84,7 @@ col1, col2 = st.columns([2, 1])
 
 with col1:
     st.write("""
-    Welcome to Climate Insights, your comprehensive platform for staying informed about 
+        Welcome to Climate Monitoring System, your comprehensive platform for staying informed about 
     climate change, weather patterns, and environmental analytics. Explore news, weather data, 
     and visual insights about our changing planet.
     """)
