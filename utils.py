@@ -15,7 +15,8 @@ OPENWEATHER_API_KEY = os.getenv("OPENWEATHER_API_KEY")
 def fetch_climate_news(page=1, page_size=10):
     """Fetch climate news articles from News API"""
     try:
-        url = f"https://newsdata.io/api/1/news?apikey={NEWSDATA_API_KEY}&q=climate%20change&language=en&page={page}&size={page_size}"
+        # Using the latest endpoint format as provided
+        url = f"https://newsdata.io/api/1/latest?apikey={NEWSDATA_API_KEY}&q=climate%20change&language=en&page={page}&size={page_size}"
         response = requests.get(url)
         response.raise_for_status()
         data = response.json()
