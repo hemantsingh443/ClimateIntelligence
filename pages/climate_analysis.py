@@ -242,7 +242,7 @@ st.write("""
 """)
 
 # Display climate images
-st.image("https://images.unsplash.com/photo-1526628953301-3e589a6a8b74", use_column_width=True)
+st.image("https://images.unsplash.com/photo-1526628953301-3e589a6a8b74", use_container_width=True)
 
 # Create tabs for different scenarios
 scenario_tab1, scenario_tab2, scenario_tab3 = st.tabs([

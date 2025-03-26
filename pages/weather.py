@@ -12,6 +12,13 @@ st.set_page_config(
     layout="wide"
 )
 
+# Initialize session state variables if they don't exist
+if 'theme' not in st.session_state:
+    st.session_state.theme = 'light'
+    
+if 'location' not in st.session_state:
+    st.session_state.location = "London"
+
 # Page header
 st.title("Weather Details")
 st.write("Current weather conditions and forecast for your selected location.")
@@ -115,12 +122,12 @@ try:
     else:
         st.error(f"Could not find weather data for '{location}'. Please try another location.")
         # Show a placeholder image
-        st.image("https://images.unsplash.com/photo-1472145246862-b24cf25c4a36", use_column_width=True)
+        st.image("https://images.unsplash.com/photo-1472145246862-b24cf25c4a36", use_container_width=True)
 
 except Exception as e:
     st.error(f"An error occurred while fetching weather data: {str(e)}")
     # Show a placeholder image
-    st.image("https://images.unsplash.com/photo-1488812690953-601000f207e4", use_column_width=True)
+    st.image("https://images.unsplash.com/photo-1488812690953-601000f207e4", use_container_width=True)
 
 # Weather forecast section
 st.subheader("5-Day Forecast")
@@ -186,7 +193,7 @@ extreme weather events, and projected climate risks.
 """)
 
 # Display a relevant climate change image
-st.image("https://images.unsplash.com/photo-1579003593419-98f949b9398f", use_column_width=True)
+st.image("https://images.unsplash.com/photo-1579003593419-98f949b9398f", use_container_width=True)
 
 # Show regional climate data
 data_tab1, data_tab2 = st.tabs(["Temperature Trends", "Precipitation Changes"])

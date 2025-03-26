@@ -6,15 +6,15 @@ from datetime import datetime, timedelta
 import random
 
 # API Keys
-WEATHER_API_KEY = os.getenv("NEXT_PUBLIC_NEWS_API_KEY", "c28b54fbca1e4410ae6a5b00e620c12b")
-NEWS_API_KEY = os.getenv("WEATHER_API_KEY", "pub_7577456a90f479845e6c02b6f3cc900976226")
+NEWS_API_KEY = os.getenv("NEXT_PUBLIC_NEWS_API_KEY", "c28b54fbca1e4410ae6a5b00e620c12b")
+WEATHER_API_KEY = os.getenv("WEATHER_API_KEY", "pub_7577456a90f479845e6c02b6f3cc900976226")
 
 # News functions
 @st.cache_data(ttl=3600)
 def fetch_climate_news(page=1, page_size=10):
     """Fetch climate news articles from News API"""
     try:
-        url = f"https://newsdata.io/api/1/news?apikey={WEATHER_API_KEY}&q=climate%20change&language=en&page={page}&size={page_size}"
+        url = f"https://newsdata.io/api/1/news?apikey={NEWS_API_KEY}&q=climate%20change&language=en&page={page}&size={page_size}"
         response = requests.get(url)
         response.raise_for_status()
         data = response.json()
@@ -33,7 +33,7 @@ def fetch_climate_news(page=1, page_size=10):
 def fetch_weather(location):
     """Fetch current weather for a location"""
     try:
-        url = f"https://api.openweathermap.org/data/2.5/weather?q={location}&appid={NEWS_API_KEY}&units=metric"
+        url = f"https://api.openweathermap.org/data/2.5/weather?q={location}&appid={WEATHER_API_KEY}&units=metric"
         response = requests.get(url)
         response.raise_for_status()
         return response.json()
