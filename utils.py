@@ -337,36 +337,38 @@ def get_sea_level_data():
             # Extract the zip file in memory
             z = zipfile.ZipFile(io.BytesIO(response.content))
             
-            # Try different possible filenames for sea level data
-            sea_level_files = [f for f in z.namelist() if 'gmsl' in f.lower()]
-            if sea_level_files:
-                with z.open(sea_level_files[0]) as f:
-                    lines = f.read().decode('utf-8').splitlines()
-                    
-                    years = []
-                    sea_levels = []
-                    
-                    # Skip the header (first line)
-                    for line in lines[1:]:
-                        parts = line.split()
-                        if len(parts) >= 2:
-                            try:
-                                year = float(parts[0])
-                                # Convert to mm and use as the sea level rise value
-                                sea_level = float(parts[1])
-                                
-                                years.append(int(year))
-                                sea_levels.append(sea_level)
-                            except (ValueError, IndexError):
-                                continue
-                    
-                    df = pd.DataFrame({
-                        'Year': years,
-                        'Sea_Level_Rise': sea_levels
-                    })
-                    
-                    return df
-            
+            try:
+                # Try different possible filenames for sea level data
+                sea_level_files = [f for f in z.namelist() if 'gmsl' in f.lower()]
+                if sea_level_files:
+                    with z.open(sea_level_files[0]) as f:
+                        lines = f.read().decode('utf-8').splitlines()
+                        
+                        years = []
+                        sea_levels = []
+                        
+                        # Skip the header (first line)
+                        for line in lines[1:]:
+                            parts = line.split()
+                            if len(parts) >= 2:
+                                try:
+                                    year = float(parts[0])
+                                    # Convert to mm and use as the sea level rise value
+                                    sea_level = float(parts[1])
+                                    
+                                    years.append(int(year))
+                                    sea_levels.append(sea_level)
+                                except (ValueError, IndexError):
+                                    continue
+                        
+                        df = pd.DataFrame({
+                            'Year': years,
+                            'Sea_Level_Rise': sea_levels
+                        })
+                        
+                        return df
+                else:
+                    raise Exception("No sea level files found in archive")
             except (KeyError, zipfile.BadZipFile):
                 # If that file isn't in the zip, try an alternative
                 raise Exception("Expected file not found in the zip archive")
