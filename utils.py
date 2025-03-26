@@ -174,6 +174,9 @@ def get_global_temperature_data():
             df = df[['Year', 'J-D']]
             df = df.rename(columns={'J-D': 'Temperature_Anomaly'})
             
+            # Convert to numeric, replacing non-numeric values with NaN
+            df['Temperature_Anomaly'] = pd.to_numeric(df['Temperature_Anomaly'], errors='coerce')
+            
             # Convert temperature anomalies from 100ths of a degree to degrees
             df['Temperature_Anomaly'] = df['Temperature_Anomaly'] / 100
             
@@ -334,9 +337,10 @@ def get_sea_level_data():
             # Extract the zip file in memory
             z = zipfile.ZipFile(io.BytesIO(response.content))
             
-            # The file we want is GMSL_1880_2009.txt which contains the global mean sea level data
-            try:
-                with z.open('CSIRO_Recons_gmsl_yr_2011.txt') as f:
+            # Try different possible filenames for sea level data
+            sea_level_files = [f for f in z.namelist() if 'gmsl' in f.lower()]
+            if sea_level_files:
+                with z.open(sea_level_files[0]) as f:
                     lines = f.read().decode('utf-8').splitlines()
                     
                     years = []
