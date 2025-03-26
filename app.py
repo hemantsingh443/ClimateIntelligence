@@ -23,11 +23,43 @@ with st.sidebar:
     st.title("Climate Insights")
     
     # Dark/light mode toggle
-    theme_toggle = st.toggle("Dark Mode", value=True if st.session_state.theme == 'dark' else False)
+    st.write("Theme changes require page refresh")
+    col1, col2 = st.columns([3, 1])
+    with col1:
+        theme_toggle = st.toggle("Dark Mode", value=True if st.session_state.theme == 'dark' else False)
+    with col2:
+        if st.button("↻", help="Refresh page to apply theme"):
+            st.rerun()
     if theme_toggle:
         st.session_state.theme = 'dark'
+        # Update the theme settings in config.toml
+        with open('.streamlit/config.toml', 'w') as f:
+            f.write('''[server]
+headless = true
+address = "0.0.0.0"
+port = 5000
+
+[theme]
+primaryColor = "#4CAF50"
+backgroundColor = "#262730"
+secondaryBackgroundColor = "#1E1E1E"
+textColor = "#FAFAFA"
+font = "sans serif"''')
     else:
         st.session_state.theme = 'light'
+        # Update the theme settings in config.toml
+        with open('.streamlit/config.toml', 'w') as f:
+            f.write('''[server]
+headless = true
+address = "0.0.0.0"
+port = 5000
+
+[theme]
+primaryColor = "#4CAF50"
+backgroundColor = "#FFFFFF"
+secondaryBackgroundColor = "#F0F2F6"
+textColor = "#262730"
+font = "sans serif"''')
     
     # Location input
     st.subheader("Search Location")
