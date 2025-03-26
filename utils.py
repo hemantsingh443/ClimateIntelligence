@@ -6,8 +6,8 @@ from datetime import datetime, timedelta
 import random
 
 # API Keys
-NEWS_API_KEY = os.getenv("NEXT_PUBLIC_NEWS_API_KEY", "c28b54fbca1e4410ae6a5b00e620c12b")
-WEATHER_API_KEY = os.getenv("WEATHER_API_KEY", "pub_7577456a90f479845e6c02b6f3cc900976226")
+WEATHER_API_KEY = os.getenv("NEXT_PUBLIC_NEWS_API_KEY", "c28b54fbca1e4410ae6a5b00e620c12b")
+NEWS_API_KEY = os.getenv("WEATHER_API_KEY", "pub_7577456a90f479845e6c02b6f3cc900976226")
 
 # News functions
 @st.cache_data(ttl=3600)

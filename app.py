@@ -66,19 +66,19 @@ with col1:
     card1, card2, card3 = st.columns(3)
     
     with card1:
-        st.image("https://images.unsplash.com/photo-1493243350443-9e3048ce7288", use_column_width=True)
+        st.image("https://images.unsplash.com/photo-1493243350443-9e3048ce7288", use_container_width=True)
         st.markdown("### Latest News")
         st.write("Get updated with the latest climate news from around the world.")
         st.page_link("pages/news.py", label="Read News", icon="📰")
         
     with card2:
-        st.image("https://images.unsplash.com/photo-1535025075092-5a1cf795130b", use_column_width=True)
+        st.image("https://images.unsplash.com/photo-1535025075092-5a1cf795130b", use_container_width=True)
         st.markdown("### Weather Details")
         st.write(f"Current weather for {st.session_state.location} and forecast.")
         st.page_link("pages/weather.py", label="Check Weather", icon="🌤️")
         
     with card3:
-        st.image("https://images.unsplash.com/photo-1551288049-bebda4e38f71", use_column_width=True)
+        st.image("https://images.unsplash.com/photo-1551288049-bebda4e38f71", use_container_width=True)
         st.markdown("### Climate Analysis")
         st.write("Visualizations to understand climate trends and patterns.")
         st.page_link("pages/climate_analysis.py", label="View Analysis", icon="📊")
@@ -108,17 +108,17 @@ st.subheader("Climate Change Impacts")
 impacts_col1, impacts_col2, impacts_col3 = st.columns(3)
 
 with impacts_col1:
-    st.image("https://images.unsplash.com/photo-1499244571948-7ccddb3583f1", use_column_width=True)
+    st.image("https://images.unsplash.com/photo-1499244571948-7ccddb3583f1", use_container_width=True)
     st.markdown("#### Rising Sea Levels")
     st.write("Coastal communities face increasing challenges from rising seas.")
 
 with impacts_col2:
-    st.image("https://images.unsplash.com/photo-1562155955-1cb2d73488d7", use_column_width=True)
+    st.image("https://images.unsplash.com/photo-1562155955-1cb2d73488d7", use_container_width=True)
     st.markdown("#### Extreme Weather")
     st.write("More frequent and intense storms, floods, and droughts.")
 
 with impacts_col3:
-    st.image("https://images.unsplash.com/photo-1561553590-267fc716698a", use_column_width=True)
+    st.image("https://images.unsplash.com/photo-1561553590-267fc716698a", use_container_width=True)
     st.markdown("#### Biodiversity Loss")
     st.write("Ecosystems struggle to adapt to rapid climate changes.")
 
