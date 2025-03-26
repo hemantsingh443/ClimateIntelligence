@@ -5,6 +5,9 @@ import os
 from datetime import datetime, timedelta
 import random
 import math
+import json
+import io
+import zipfile
 
 # API Keys
 NEWSDATA_API_KEY = os.getenv("NEWSDATA_API_KEY")
