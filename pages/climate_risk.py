@@ -4,7 +4,7 @@ import climate_data
 import pandas as pd
 import plotly.express as px
 import folium
-from streamlit_folium import folium_static
+from streamlit_folium import st_folium
 
 # Page configuration
 st.set_page_config(
@@ -354,7 +354,7 @@ with water_tab3:
         ).add_to(m)
     
     # Display the map
-    folium_static(m)
+    st_folium(m, width=800, height=600)
 
 # Add resources section
 st.subheader("Climate Risk Resources")

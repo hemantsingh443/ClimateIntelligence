@@ -1,7 +1,7 @@
 import streamlit as st
 import utils
 import folium
-from streamlit_folium import folium_static
+from streamlit_folium import st_folium
 import pandas as pd
 from datetime import datetime
 
@@ -116,7 +116,7 @@ try:
                 ).add_to(m)
                 
                 # Display the map
-                folium_static(m)
+                st_folium(m, width=800, height=500)
             else:
                 st.warning("Map data not available")
     else:
