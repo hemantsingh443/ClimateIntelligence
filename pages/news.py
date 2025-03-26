@@ -16,8 +16,8 @@ if 'theme' not in st.session_state:
 if 'location' not in st.session_state:
     st.session_state.location = "London"
     
-if 'news_page' not in st.session_state:
-    st.session_state.news_page = 1
+if 'news_next_page' not in st.session_state:
+    st.session_state.news_next_page = None
 
 # Page header
 st.title("Climate News")
@@ -55,109 +55,57 @@ with st.sidebar:
 
 # News content area
 try:
-    # Initialize pagination
-    if 'news_page' not in st.session_state:
-        st.session_state.news_page = 1
+    # Fetch news with pagination
+    articles, next_page, total_results = utils.fetch_climate_news(
+        next_page=st.session_state.news_next_page
+    )
     
-    # Fetch news
-    news_articles = utils.fetch_climate_news(page=st.session_state.news_page)
+    if total_results > 0:
+        st.write(f"Found {total_results} articles about climate change")
     
-    if not news_articles:
-        st.warning("No news articles found. Please try again later.")
-    else:
-        st.write(f"Showing {len(news_articles)} results")
-        
-        # Display news articles in a grid
-        for i in range(0, len(news_articles), 2):
-            col1, col2 = st.columns(2)
+    # Display articles
+    for article in articles:
+        with st.container():
+            # Article title with link
+            title = article.get('title', 'No title available')
+            link = article.get('link', '#')
+            st.markdown(f"### [{title}]({link})")
             
-            # First article in the row
+            # Article metadata
+            col1, col2 = st.columns([3, 1])
             with col1:
-                if i < len(news_articles):
-                    article = news_articles[i]
-                    
-                    # Article card with image
-                    with st.container():
-                        st.subheader(article.get('title', 'No title available'))
-                        
-                        # Display publication info
-                        source = article.get('source_id', 'Unknown source')
-                        pub_date = article.get('pubDate', 'Unknown date')
-                        st.caption(f"{source} • {pub_date}")
-                        
-                        # Article image if available
-                        if article.get('image_url'):
-                            st.image(article['image_url'], use_container_width=True)
-                        else:
-                            # Use a stock image if no image available
-                            st.image("https://images.unsplash.com/photo-1460925895917-afdab827c52f", use_container_width=True)
-                        
-                        # Article description
-                        description = article.get('description', 'No description available')
-                        if description:
-                            # Limit to a reasonable length
-                            if len(description) > 200:
-                                description = description[:200] + "..."
-                            st.write(description)
-                        
-                        # Link to full article
-                        if article.get('link'):
-                            st.markdown(f"[Read full article]({article['link']})")
-                    
-                    st.divider()
+                source = article.get('source_id', 'Unknown source')
+                date = article.get('pubDate', 'Unknown date')
+                st.caption(f"Source: {source} | Published: {date}")
             
-            # Second article in the row
-            with col2:
-                if i + 1 < len(news_articles):
-                    article = news_articles[i + 1]
-                    
-                    # Article card with image
-                    with st.container():
-                        st.subheader(article.get('title', 'No title available'))
-                        
-                        # Display publication info
-                        source = article.get('source_id', 'Unknown source')
-                        pub_date = article.get('pubDate', 'Unknown date')
-                        st.caption(f"{source} • {pub_date}")
-                        
-                        # Article image if available
-                        if article.get('image_url'):
-                            st.image(article['image_url'], use_container_width=True)
-                        else:
-                            # Use a stock image if no image available
-                            st.image("https://images.unsplash.com/photo-1542744173-05336fcc7ad4", use_container_width=True)
-                        
-                        # Article description
-                        description = article.get('description', 'No description available')
-                        if description:
-                            # Limit to a reasonable length
-                            if len(description) > 200:
-                                description = description[:200] + "..."
-                            st.write(description)
-                        
-                        # Link to full article
-                        if article.get('link'):
-                            st.markdown(f"[Read full article]({article['link']})")
-                    
-                    st.divider()
-        
-        # Pagination controls
-        col1, col2, col3 = st.columns([1, 3, 1])
-        
-        with col1:
-            if st.session_state.news_page > 1:
-                if st.button("← Previous"):
-                    st.session_state.news_page -= 1
-                    st.rerun()
-        
-        with col2:
-            st.write(f"Page {st.session_state.news_page}")
-        
-        with col3:
-            if len(news_articles) >= 10:  # Assuming we have more pages
-                if st.button("Next →"):
-                    st.session_state.news_page += 1
-                    st.rerun()
+            # Article description
+            description = article.get('description', 'No description available')
+            st.write(description)
+            
+            # Keywords/categories if available
+            keywords = article.get('keywords', [])
+            if keywords:
+                st.caption(f"Keywords: {', '.join(keywords)}")
+            
+            st.divider()
+
+    # Pagination controls
+    col1, col2, col3 = st.columns([1, 2, 1])
+
+    with col2:
+        if next_page:
+            if st.button("Load More Articles"):
+                st.session_state.news_next_page = next_page
+                st.rerun()
+        else:
+            st.write("No more articles available")
+
+    # Reset pagination button
+    with col3:
+        if st.session_state.news_next_page:
+            if st.button("Back to First Page"):
+                st.session_state.news_next_page = None
+                st.rerun()
 
 except Exception as e:
     st.error(f"An error occurred while fetching news: {str(e)}")

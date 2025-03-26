@@ -2,6 +2,7 @@ import streamlit as st
 import os
 from datetime import datetime
 import utils
+import shutil
 
 # Page configuration
 st.set_page_config(
@@ -9,6 +10,11 @@ st.set_page_config(
     page_icon="🌍",
     layout="wide",
     initial_sidebar_state="expanded",
+    menu_items={
+        'Get Help': 'https://www.extremelycoolapp.com/help',
+        'Report a bug': "https://www.extremelycoolapp.com/bug",
+        'About': "# This is a header. This is an *extremely* cool app!"
+    }
 )
 
 # Initialize session state variables if they don't exist
@@ -17,6 +23,13 @@ if 'theme' not in st.session_state:
     
 if 'location' not in st.session_state:
     st.session_state.location = "London"
+
+def switch_theme(theme):
+    """Switch between light and dark themes by copying the appropriate config file."""
+    if theme == 'dark':
+        shutil.copy('.streamlit/config_dark.toml', '.streamlit/config.toml')
+    else:
+        shutil.copy('.streamlit/config_light.toml', '.streamlit/config.toml')
 
 # Sidebar
 with st.sidebar:
@@ -31,35 +44,13 @@ with st.sidebar:
         if st.button("↻", help="Refresh page to apply theme"):
             st.rerun()
     if theme_toggle:
-        st.session_state.theme = 'dark'
-        # Update the theme settings in config.toml
-        with open('.streamlit/config.toml', 'w') as f:
-            f.write('''[server]
-headless = true
-address = "0.0.0.0"
-port = 5000
-
-[theme]
-primaryColor = "#4CAF50"
-backgroundColor = "#262730"
-secondaryBackgroundColor = "#1E1E1E"
-textColor = "#FAFAFA"
-font = "sans serif"''')
+        if st.session_state.theme != 'dark':
+            st.session_state.theme = 'dark'
+            switch_theme('dark')
     else:
-        st.session_state.theme = 'light'
-        # Update the theme settings in config.toml
-        with open('.streamlit/config.toml', 'w') as f:
-            f.write('''[server]
-headless = true
-address = "0.0.0.0"
-port = 5000
-
-[theme]
-primaryColor = "#4CAF50"
-backgroundColor = "#FFFFFF"
-secondaryBackgroundColor = "#F0F2F6"
-textColor = "#262730"
-font = "sans serif"''')
+        if st.session_state.theme != 'light':
+            st.session_state.theme = 'light'
+            switch_theme('light')
     
     # Location input
     st.subheader("Search Location")
@@ -69,11 +60,17 @@ font = "sans serif"''')
     
     # Navigation
     st.subheader("Navigation")
-    st.page_link("app.py", label="Home", icon="🏠")
-    st.page_link("pages/news.py", label="Climate News", icon="📰")
-    st.page_link("pages/weather.py", label="Weather", icon="🌤️")
-    st.page_link("pages/climate_analysis.py", label="Climate Analysis", icon="📊")
-    st.page_link("pages/climate_risk.py", label="Climate Risk Factors", icon="⚠️")
+    pages = {
+        "🏠 Home": "app.py",
+        "📰 Climate News": "pages/news.py",
+        "🌤️ Weather": "pages/weather.py",
+        "📊 Climate Analysis": "pages/climate_analysis.py",
+        "⚠️ Climate Risk Factors": "pages/climate_risk.py"
+    }
+    
+    for page_name, page_path in pages.items():
+        if st.button(page_name, use_container_width=True):
+            st.switch_page(page_path)
     
     st.divider()
     st.caption("© 2023 Climate Insights")
@@ -101,19 +98,22 @@ with col1:
         st.image("https://images.unsplash.com/photo-1493243350443-9e3048ce7288", use_container_width=True)
         st.markdown("### Latest News")
         st.write("Get updated with the latest climate news from around the world.")
-        st.page_link("pages/news.py", label="Read News", icon="📰")
+        if st.button("Read News", key="news_btn"):
+            st.switch_page("pages/news.py")
         
     with card2:
         st.image("https://images.unsplash.com/photo-1535025075092-5a1cf795130b", use_container_width=True)
         st.markdown("### Weather Details")
         st.write(f"Current weather for {st.session_state.location} and forecast.")
-        st.page_link("pages/weather.py", label="Check Weather", icon="🌤️")
+        if st.button("Check Weather", key="weather_btn"):
+            st.switch_page("pages/weather.py")
         
     with card3:
         st.image("https://images.unsplash.com/photo-1551288049-bebda4e38f71", use_container_width=True)
         st.markdown("### Climate Analysis")
         st.write("Visualizations to understand climate trends and patterns.")
-        st.page_link("pages/climate_analysis.py", label="View Analysis", icon="📊")
+        if st.button("View Analysis", key="analysis_btn"):
+            st.switch_page("pages/climate_analysis.py")
 
 with col2:
     # Current date and time

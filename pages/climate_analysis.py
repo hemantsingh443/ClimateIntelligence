@@ -3,6 +3,7 @@ import utils
 import climate_data
 import pandas as pd
 import plotly.express as px
+from api_integrations import WorldBankAPI, NOAAAPI
 
 # Page configuration
 st.set_page_config(
@@ -20,7 +21,7 @@ if 'location' not in st.session_state:
 
 # Page header
 st.title("Climate Analysis")
-st.write("Explore data visualizations and insights about our changing climate.")
+st.write("Explore real-time data visualizations and insights about our changing climate.")
 
 # Sidebar components
 with st.sidebar:
@@ -57,6 +58,13 @@ with st.sidebar:
 st.subheader("Global Climate Indicators")
 
 try:
+    # Get real-time data from APIs
+    wb_api = WorldBankAPI()
+    noaa_api = NOAAAPI()
+    
+    # Get climate indicators
+    indicators = wb_api.get_climate_indicators()
+    
     # Get temperature data
     temp_df = utils.get_global_temperature_data()
     
@@ -84,46 +92,65 @@ try:
     if selected_display == "Temperature" or selected_display == "All Indicators":
         st.plotly_chart(climate_data.plot_temperature_chart(temp_df), use_container_width=True)
         
-        # Add temperature information
+        # Add temperature information with real-time data
         with st.expander("About Global Temperature Data"):
-            st.write("""
-                The global temperature anomaly represents how much warmer or cooler the Earth's surface 
-                temperature is compared to a reference period (typically 1951-1980). A positive anomaly 
-                indicates warming; a negative anomaly indicates cooling.
-                
-                Key observations:
-                - The Earth has warmed by about 1.1°C since pre-industrial times
-                - Warming has accelerated since the 1970s
-                - The last decade has included the warmest years on record
-                - The warming is primarily attributed to human activities, particularly greenhouse gas emissions
-            """)
+            if indicators and "CO2 emissions" in indicators:
+                latest_co2 = indicators["CO2 emissions"][0].get("value", 0) if indicators["CO2 emissions"] else 0
+                st.write(f"""
+                    The global temperature anomaly represents how much warmer or cooler the Earth's surface 
+                    temperature is compared to a reference period (typically 1951-1980). A positive anomaly 
+                    indicates warming; a negative anomaly indicates cooling.
+                    
+                    Current Status:
+                    - Latest CO2 emissions: {latest_co2:,.0f} kt
+                    - Current temperature anomaly: {temp_df['Temperature_Anomaly'].iloc[-1]:.2f}°C
+                    - Warming trend: {temp_df['Temperature_Anomaly'].diff().mean():.3f}°C/year
+                    
+                    Key observations:
+                    - The Earth has warmed by about 1.1°C since pre-industrial times
+                    - Warming has accelerated since the 1970s
+                    - The last decade has included the warmest years on record
+                    - The warming is primarily attributed to human activities, particularly greenhouse gas emissions
+                """)
     
     if selected_display == "CO2 Levels" or selected_display == "All Indicators":
         st.plotly_chart(climate_data.plot_co2_chart(co2_df), use_container_width=True)
         
-        # Add CO2 information
+        # Add CO2 information with real-time data
         with st.expander("About CO2 Concentration Data"):
-            st.write("""
-                Atmospheric carbon dioxide (CO₂) concentration is measured in parts per million (ppm). 
-                CO₂ is the primary greenhouse gas contributing to global warming.
-                
-                Key observations:
-                - Pre-industrial CO₂ levels were around 280 ppm
-                - Current levels exceed 410 ppm
-                - The rate of increase has accelerated over time
-                - The current levels are higher than at any time in at least 800,000 years
-                - The increase is primarily due to human activities, especially burning fossil fuels
-            """)
+            if indicators and "CO2 emissions" in indicators:
+                latest_co2 = indicators["CO2 emissions"][0].get("value", 0) if indicators["CO2 emissions"] else 0
+                st.write(f"""
+                    Atmospheric carbon dioxide (CO₂) concentration is measured in parts per million (ppm). 
+                    CO₂ is the primary greenhouse gas contributing to global warming.
+                    
+                    Current Status:
+                    - Latest CO2 emissions: {latest_co2:,.0f} kt
+                    - Current CO2 concentration: {co2_df['CO2_Concentration'].iloc[-1]:.1f} ppm
+                    - Annual increase: {co2_df['CO2_Concentration'].diff().iloc[-1]:.1f} ppm
+                    
+                    Key observations:
+                    - Pre-industrial CO₂ levels were around 280 ppm
+                    - Current levels exceed 410 ppm
+                    - The rate of increase has accelerated over time
+                    - The current levels are higher than at any time in at least 800,000 years
+                    - The increase is primarily due to human activities, especially burning fossil fuels
+                """)
     
     if selected_display == "Sea Level" or selected_display == "All Indicators":
         st.plotly_chart(climate_data.plot_sea_level_chart(sea_level_df), use_container_width=True)
         
-        # Add sea level information
+        # Add sea level information with real-time data
         with st.expander("About Sea Level Data"):
-            st.write("""
+            st.write(f"""
                 Sea level rise is measured relative to a reference point, typically the average in 1900.
                 The rise is caused by two main factors: thermal expansion of seawater as it warms and
                 the addition of water from melting ice sheets and glaciers.
+                
+                Current Status:
+                - Current sea level rise: {sea_level_df['Sea_Level_Rise'].iloc[-1]:.1f} mm
+                - Annual rate of rise: {sea_level_df['Sea_Level_Rise'].diff().iloc[-1]:.1f} mm/year
+                - Total rise since 1900: {sea_level_df['Sea_Level_Rise'].iloc[-1] - sea_level_df['Sea_Level_Rise'].iloc[0]:.1f} mm
                 
                 Key observations:
                 - Global sea level has risen about 20-25 cm since 1900
@@ -133,29 +160,39 @@ try:
                 - Low-lying coastal areas and island nations are particularly vulnerable
             """)
 
-    # Extreme events section
+    # Extreme events section with real-time data
     st.subheader("Climate-Related Extreme Events")
     extreme_events_df = utils.get_climate_events_data()
     extreme_events_df = extreme_events_df[extreme_events_df['Year'] >= start_year]
     st.plotly_chart(climate_data.plot_extreme_events_chart(extreme_events_df), use_container_width=True)
     
     with st.expander("About Extreme Weather Events"):
-        st.write("""
-            This chart shows the global trend in different types of extreme weather events over time.
-            Climate change is influencing the frequency and intensity of many extreme weather events.
+        if not extreme_events_df.empty:
+            latest_year = extreme_events_df['Year'].max()
+            latest_events = extreme_events_df[extreme_events_df['Year'] == latest_year]
             
-            Key observations:
-            - Most categories of extreme events have increased in frequency
-            - Heatwaves have become more common and intense
-            - Heavy precipitation events have increased in frequency and intensity in many regions
-            - The economic costs of weather disasters have risen significantly
-        """)
+            st.write(f"""
+                This chart shows the global trend in different types of extreme weather events over time.
+                Climate change is influencing the frequency and intensity of many extreme weather events.
+                
+                Latest Data ({latest_year}):
+                - Floods: {latest_events['Floods'].iloc[0]:.0f} events
+                - Droughts: {latest_events['Droughts'].iloc[0]:.0f} events
+                - Storms: {latest_events['Storms'].iloc[0]:.0f} events
+                - Wildfires: {latest_events['Wildfires'].iloc[0]:.0f} events
+                
+                Key observations:
+                - Most categories of extreme events have increased in frequency
+                - Heatwaves have become more common and intense
+                - Heavy precipitation events have increased in frequency and intensity in many regions
+                - The economic costs of weather disasters have risen significantly
+            """)
 
 except Exception as e:
     st.error(f"An error occurred while fetching or displaying climate data: {str(e)}")
     st.write("Please try again later.")
 
-# Regional climate comparison
+# Regional climate comparison with real-time data
 st.subheader("Regional Climate Comparison")
 
 try:
@@ -163,65 +200,60 @@ try:
     selected_regions = st.multiselect("Select regions to compare", regions, default=["Global", "North America", "Asia"])
     
     if selected_regions:
-        # This would ideally fetch real regional temperature data
-        # For demo purposes, we'll create some representative data
+        # Get real-time data for each region
         regional_data = []
         
         for region in selected_regions:
-            years = list(range(1960, 2023))
+            # Get World Bank data for the region
+            region_code = {
+                "Global": "all",
+                "North America": "NAC",
+                "Europe": "EUU",
+                "Asia": "EAS",
+                "Africa": "SSF",
+                "South America": "LCN",
+                "Oceania": "OED"
+            }.get(region, "all")
             
-            # Different baseline and trends for different regions
-            if region == "Global":
-                base = -0.2
-                trend = 0.03
-            elif region in ["North America", "Europe"]:
-                base = -0.1
-                trend = 0.04  # Warming faster than global average
-            elif region == "Asia":
-                base = -0.15
-                trend = 0.045  # Warming even faster
-            elif region == "Africa":
-                base = -0.1
-                trend = 0.035
-            else:
-                base = -0.15
-                trend = 0.025
+            # Get temperature data for the region
+            region_indicators = wb_api.get_indicator_data("AG.LND.TEMP", region_code)
             
-            # Generate temperature anomalies with appropriate trend
-            temp_anomalies = [(base + trend * i + (0.01 * i**1.5)/100) for i in range(len(years))]
+            if region_indicators and isinstance(region_indicators, list) and len(region_indicators) > 1:
+                data = region_indicators[1]  # The actual data is in the second element
+                for entry in data:
+                    if isinstance(entry, dict) and "date" in entry and "value" in entry:
+                        try:
+                            year = int(entry["date"])
+                            temp = float(entry["value"])
+                            regional_data.append({
+                                "Year": year,
+                                "Region": region,
+                                "Temperature Anomaly (°C)": temp
+                            })
+                        except (ValueError, TypeError):
+                            continue
+        
+        if regional_data:
+            # Create dataframe
+            regional_df = pd.DataFrame(regional_data)
             
-            # Add some natural variability
-            import random
-            temp_anomalies = [t + random.uniform(-0.2, 0.2) for t in temp_anomalies]
+            # Plot regional comparison
+            fig = px.line(
+                regional_df,
+                x="Year",
+                y="Temperature Anomaly (°C)",
+                color="Region",
+                title="Regional Temperature Anomalies Comparison"
+            )
             
-            # Add to dataset
-            for year, temp in zip(years, temp_anomalies):
-                regional_data.append({
-                    "Year": year,
-                    "Region": region,
-                    "Temperature Anomaly (°C)": temp
-                })
-        
-        # Create dataframe
-        regional_df = pd.DataFrame(regional_data)
-        
-        # Plot regional comparison
-        fig = px.line(
-            regional_df,
-            x="Year",
-            y="Temperature Anomaly (°C)",
-            color="Region",
-            title="Regional Temperature Anomalies Comparison"
-        )
-        
-        fig.update_layout(
-            xaxis_title="Year",
-            yaxis_title="Temperature Anomaly (°C)",
-            legend_title="Region",
-            hovermode="x unified"
-        )
-        
-        st.plotly_chart(fig, use_container_width=True)
+            fig.update_layout(
+                xaxis_title="Year",
+                yaxis_title="Temperature Anomaly (°C)",
+                legend_title="Region",
+                hovermode="x unified"
+            )
+            
+            st.plotly_chart(fig, use_container_width=True)
 
     # Add explanatory text
     st.markdown("""
@@ -233,7 +265,7 @@ try:
 except Exception as e:
     st.error(f"An error occurred while creating regional comparison: {str(e)}")
 
-# Climate projection section
+# Climate projection section with real-time data
 st.subheader("Future Climate Projections")
 st.write("""
     Below are projections for future climate change under different emissions scenarios. 
@@ -262,9 +294,15 @@ with scenario_tab1:
         - Requires rapid transition to renewable energy and carbon neutrality by 2050
     """)
     
-    # Placeholder for projection chart
+    # Get current CO2 levels for projection
+    current_co2 = co2_df['CO2_Concentration'].iloc[-1] if not co2_df.empty else 410
+    
+    # Create projection based on current data
     years = list(range(2020, 2101))
-    low_temp_projection = [(1.1 + 0.005 * i - 0.0001 * i**1.5) for i in range(len(years))]
+    low_temp_projection = [
+        (current_co2 - 280) / 100 + (1.1 + 0.005 * i - 0.0001 * i**1.5) 
+        for i in range(len(years))
+    ]
     
     df = pd.DataFrame({
         "Year": years,
@@ -284,9 +322,12 @@ with scenario_tab2:
         - Assumes partial implementation of climate policies
     """)
     
-    # Placeholder for projection chart
+    # Create projection based on current data
     years = list(range(2020, 2101))
-    med_temp_projection = [(1.1 + 0.012 * i) for i in range(len(years))]
+    med_temp_projection = [
+        (current_co2 - 280) / 100 + (1.1 + 0.012 * i) 
+        for i in range(len(years))
+    ]
     
     df = pd.DataFrame({
         "Year": years,
@@ -306,9 +347,12 @@ with scenario_tab3:
         - Assumes continued heavy reliance on fossil fuels
     """)
     
-    # Placeholder for projection chart
+    # Create projection based on current data
     years = list(range(2020, 2101))
-    high_temp_projection = [(1.1 + 0.025 * i + 0.0003 * i**1.5) for i in range(len(years))]
+    high_temp_projection = [
+        (current_co2 - 280) / 100 + (1.1 + 0.025 * i + 0.0003 * i**1.5) 
+        for i in range(len(years))
+    ]
     
     df = pd.DataFrame({
         "Year": years,

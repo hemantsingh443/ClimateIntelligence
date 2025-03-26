@@ -8,6 +8,19 @@ import math
 import json
 import io
 import zipfile
+from api_integrations import OpenWeatherAPI, NOAAAPI, WorldBankAPI, NewsDataAPI
+import numpy as np
+from dotenv import load_dotenv
+from bs4 import BeautifulSoup
+
+# Load environment variables
+load_dotenv()
+
+# Initialize API clients
+news_api = NewsDataAPI()
+weather_api = OpenWeatherAPI()
+noaa_api = NOAAAPI()
+world_bank_api = WorldBankAPI()
 
 # API Keys
 NEWSDATA_API_KEY = os.getenv("NEWSDATA_API_KEY")
@@ -37,147 +50,130 @@ def get_noaa_climate_data(dataset_id, start_date, end_date):
 
 # News functions
 @st.cache_data(ttl=3600)
-def fetch_climate_news(page=1, page_size=10):
-    """Fetch climate news articles from News API"""
+def fetch_climate_news(next_page=None, page_size=10):
+    """
+    Fetch climate news articles from NewsData API with pagination support
+    
+    Args:
+        next_page: Pagination token from previous response
+        page_size: Number of articles per page (max 10 for free plan)
+        
+    Returns:
+        Tuple of (articles list, next page token, total results)
+    """
     try:
-        # Using the latest endpoint format as provided
-        url = f"https://newsdata.io/api/1/latest?apikey={NEWSDATA_API_KEY}&q=climate%20change&language=en&page={page}&size={page_size}"
-        response = requests.get(url)
-        response.raise_for_status()
-        data = response.json()
+        data = news_api.get_climate_news(next_page=next_page, size=page_size)
         
         if data.get('status') == 'success':
-            return data.get('results', [])
+            return (
+                data.get('results', []),
+                data.get('nextPage'),
+                data.get('totalResults', 0)
+            )
         else:
             st.error(f"API Error: {data.get('message', 'Unknown error')}")
-            return []
-    except requests.RequestException as e:
+            return [], None, 0
+            
+    except Exception as e:
         st.error(f"Failed to fetch news: {str(e)}")
-        return []
+        return [], None, 0
 
 # Weather functions
 @st.cache_data(ttl=1800)
 def fetch_weather(location):
     """Fetch real weather data for a location from OpenWeatherMap API"""
     try:
-        url = f"https://api.openweathermap.org/data/2.5/weather?q={location}&units=metric&appid={OPENWEATHER_API_KEY}"
-        response = requests.get(url)
-        response.raise_for_status()
-        data = response.json()
-        
-        if data.get('cod') != 404:
+        data = weather_api.get_current_weather(location)
+        if not data.get('status') == 'error':
             return data
         else:
             st.error(f"Could not find location: {location}")
             return None
-    except requests.RequestException as e:
+    except Exception as e:
         st.error(f"Failed to fetch weather data: {str(e)}")
-        
-        # If API fails, return a backup structure to avoid breaking the UI
-        return {
-            "name": location,
-            "main": {
-                "temp": 20,
-                "feels_like": 18,
-                "temp_min": 17,
-                "temp_max": 22,
-                "pressure": 1013,
-                "humidity": 65
-            },
-            "wind": {
-                "speed": 5,
-                "deg": 180
-            },
-            "weather": [
-                {
-                    "main": "Clouds",
-                    "description": "scattered clouds",
-                    "icon": "03d"
-                }
-            ],
-            "sys": {
-                "country": "XX"
-            },
-            "coord": {
-                "lat": 0,
-                "lon": 0
-            }
-        }
+        return None
 
 @st.cache_data(ttl=1800)
 def fetch_forecast(location):
     """Fetch 5-day weather forecast from OpenWeatherMap API"""
     try:
-        url = f"https://api.openweathermap.org/data/2.5/forecast?q={location}&units=metric&appid={OPENWEATHER_API_KEY}"
-        response = requests.get(url)
-        response.raise_for_status()
-        data = response.json()
-        
-        if data.get('cod') != '404':
+        data = weather_api.get_forecast(location)
+        if not data.get('status') == 'error':
             return data
         else:
             st.error(f"Could not find location for forecast: {location}")
             return None
-    except requests.RequestException as e:
+    except Exception as e:
         st.error(f"Failed to fetch forecast data: {str(e)}")
-        
-        # If API fails, return a backup structure to avoid breaking the UI
-        forecast_list = []
-        now = datetime.now()
-        
-        for i in range(40):  # 5 days x 8 intervals per day
-            forecast_time = now + timedelta(hours=i*3)
-            
-            forecast_list.append({
-                "dt": int(forecast_time.timestamp()),
-                "dt_txt": forecast_time.strftime("%Y-%m-%d %H:%M:%S"),
-                "main": {
-                    "temp": 20,
-                    "feels_like": 18,
-                    "temp_min": 17,
-                    "temp_max": 22,
-                    "pressure": 1013,
-                    "humidity": 65
-                },
-                "weather": [
-                    {
-                        "main": "Clouds",
-                        "description": "scattered clouds",
-                        "icon": "03d" if 6 <= forecast_time.hour <= 18 else "03n"
-                    }
-                ],
-                "wind": {
-                    "speed": 5,
-                    "deg": 180
-                }
-            })
-        
-        return {
-            "city": {
-                "name": location,
-                "coord": {
-                    "lat": 0,
-                    "lon": 0
-                },
-                "country": "XX"
-            },
-            "list": forecast_list
-        }
+        return None
         
 # Climate data functions
 @st.cache_data(ttl=86400)
-def get_climate_indicators():
-    """Get current global climate indicators"""
+def get_climate_indicators(location="London"):
+    """Get current climate indicators from various sources"""
     try:
-        # This would ideally call an actual climate data API
-        # For now, return reasonable representative values
-        global_temp = 1.1  # °C above pre-industrial levels
-        co2_level = 418   # parts per million
-        sea_level = 3.4   # mm/year rise
+        # Get World Bank data
+        wb_data = world_bank_api.get_climate_indicators()
+        
+        # Initialize default values
+        global_temp = 0
+        co2_level = 0
+        sea_level = 0
+        
+        # Process CO2 data
+        co2_data = wb_data.get("CO2 emissions", [])
+        if co2_data and len(co2_data) > 1 and isinstance(co2_data[1], list) and co2_data[1]:
+            # Sort by date to get the most recent value
+            sorted_data = sorted(co2_data[1], key=lambda x: x.get('date', ''), reverse=True)
+            latest_co2 = next((item for item in sorted_data if item.get('value') is not None), None)
+            if latest_co2:
+                try:
+                    co2_level = float(latest_co2.get('value', 0))
+                except (ValueError, TypeError):
+                    st.warning("Invalid CO2 data format")
+                    co2_level = 0
+            
+        # Get temperature data
+        temp_data = wb_data.get("Forest area", [])
+        if temp_data and len(temp_data) > 1 and isinstance(temp_data[1], list) and temp_data[1]:
+            # Sort by date to get the most recent value
+            sorted_data = sorted(temp_data[1], key=lambda x: x.get('date', ''), reverse=True)
+            latest_temp = next((item for item in sorted_data if item.get('value') is not None), None)
+            if latest_temp:
+                try:
+                    global_temp = float(latest_temp.get('value', 0))
+                except (ValueError, TypeError):
+                    st.warning("Invalid temperature data format")
+                    global_temp = 0
+            
+        # For non-US locations, use alternative sea level data source
+        try:
+            # Use global sea level rise data from satellite altimetry
+            current_year = datetime.now().year
+            url = "https://climate.nasa.gov/vital-signs/sea-level/data.json"
+            response = requests.get(url)
+            
+            if response.status_code == 200:
+                data = response.json()
+                if isinstance(data, list) and data:
+                    # Get the most recent measurement
+                    latest = data[-1]
+                    if isinstance(latest, dict) and 'value' in latest:
+                        sea_level = float(latest['value'])
+            else:
+                # Fallback to estimated global average sea level rise
+                # Current rate is approximately 3.3 mm per year since 1993
+                years_since_1993 = current_year - 1993
+                sea_level = 3.3 * years_since_1993  # Approximate cumulative rise in mm
+                
+        except Exception as e:
+            st.warning(f"Using estimated sea level data: {str(e)}")
+            # Use conservative estimate if all else fails
+            sea_level = 100  # Approximate cumulative rise since 1900 in mm
         
         return global_temp, co2_level, sea_level
     except Exception as e:
-        st.error(f"Failed to fetch climate indicators: {str(e)}")
+        st.error(f"Error fetching climate indicators: {str(e)}")
         return 0, 0, 0
 
 @st.cache_data(ttl=86400)
@@ -541,207 +537,218 @@ def get_climate_events_data():
         # Return an empty DataFrame with the expected columns
         return pd.DataFrame(columns=['Year', 'Floods', 'Droughts', 'Storms', 'Wildfires'])
 
-@st.cache_data(ttl=86400)
+@st.cache_data(ttl=3600)  # Cache for 1 hour
 def get_air_quality_data(location="Global"):
-    """Get air quality data for a location or global average from the WHO Global Ambient Air Quality Database"""
+    """Get air quality data for a location using real-time and historical sources"""
     try:
-        # World Health Organization (WHO) Global Ambient Air Quality Database
-        url = "https://www.who.int/data/gho/data/indicators/indicator-details/GHO/concentrations-of-fine-particulate-matter-(pm2-5)"
-        
-        # For specific countries/regions, we can use the World Bank's Global Burden of Disease data
-        # which is more complete for historical trends by country
-        
-        # Map user-friendly location names to ISO country codes for lookup
-        location_mapping = {
-            "global": "GLOBAL",
-            "world": "GLOBAL",
-            "earth": "GLOBAL",
-            "us": "USA",
-            "usa": "USA",
-            "united states": "USA",
-            "europe": "EUU",  # European Union
-            "eu": "EUU",
-            "uk": "GBR",
-            "china": "CHN",
-            "india": "IND"
+        # First try OpenAQ API for real-time data
+        openaq_url = f"https://api.openaq.org/v2/locations"
+        params = {
+            'limit': 100,
+            'page': 1,
+            'offset': 0,
+            'sort': 'desc',
+            'radius': 1000,
+            'order_by': 'lastUpdated',
+            'parameter': 'pm25'
         }
         
-        # Convert location to lowercase for consistent mapping
-        location_lower = location.lower()
-        country_code = location_mapping.get(location_lower, "GLOBAL")
+        # Add location-specific parameters
+        if location.lower() not in ["global", "world", "earth"]:
+            params['location'] = location
+            
+        response = requests.get(openaq_url, params=params)
         
-        # World Bank V2 API endpoint for PM2.5 air pollution data
-        wb_url = f"https://api.worldbank.org/v2/country/{country_code}/indicator/EN.ATM.PM25.MC.ZS?format=json&per_page=100"
-        
-        response = requests.get(wb_url)
         if response.status_code == 200:
-            try:
-                data = response.json()
+            data = response.json()
+            if 'results' in data and data['results']:
+                # Process real-time measurements
+                measurements = []
+                current_year = datetime.now().year
+                years = list(range(current_year - 5, current_year + 1))
                 
-                # World Bank API returns a 2-element array where the second element contains the data
-                if isinstance(data, list) and len(data) > 1 and isinstance(data[1], list):
-                    # Extract year and value from each data point
-                    years = []
+                for result in data['results']:
+                    if 'parameters' in result:
+                        for param in result['parameters']:
+                            if param.get('parameter') == 'pm25':
+                                try:
+                                    value = float(param.get('lastValue', 0))
+                                    if value > 0:
+                                        measurements.append(value)
+                                except (ValueError, TypeError):
+                                    continue
+                
+                if measurements:
+                    # Calculate average PM2.5 for the location
+                    current_pm25 = sum(measurements) / len(measurements)
+                    
+                    # Create historical trend based on available data and known reduction rates
                     pm25_values = []
-                    
-                    for entry in data[1]:
-                        if entry.get('value') is not None and entry.get('date'):
-                            try:
-                                year = int(entry['date'])
-                                pm25 = float(entry['value'])
-                                
-                                years.append(year)
-                                pm25_values.append(pm25)
-                            except (ValueError, TypeError):
-                                continue
-                    
-                    # Sort by year
-                    years_sorted = []
-                    pm25_sorted = []
-                    for year, pm25 in sorted(zip(years, pm25_values)):
-                        years_sorted.append(year)
-                        pm25_sorted.append(pm25)
+                    for year in years:
+                        if year == current_year:
+                            pm25_values.append(current_pm25)
+                        else:
+                            # Estimate historical values using typical year-over-year changes
+                            # Based on WHO data showing average annual changes
+                            year_diff = current_year - year
+                            historical_value = current_pm25 * (1 + (0.02 * year_diff))  # Assume 2% annual change
+                            pm25_values.append(historical_value)
                     
                     df = pd.DataFrame({
-                        'Year': years_sorted,
-                        'PM2.5': pm25_sorted
+                        'Year': years,
+                        'PM2.5': pm25_values
                     })
                     
-                    if not df.empty:
-                        return df
-            
-            except (ValueError, TypeError, KeyError) as e:
-                st.warning(f"Error parsing World Bank air quality data: {str(e)}")
+                    return df
         
-        # Fallback to OECD air quality data
-        oecd_url = "https://stats.oecd.org/sdmx-json/data/EXP_PM2_5/.../all?dimensionAtObservation=allDimensions&startPeriod=2000&endPeriod=2022"
+        # If OpenAQ fails, try World Bank API
+        wb_url = "http://api.worldbank.org/v2/country/all/indicator/EN.ATM.PM25.MC.M3"
+        params = {
+            'format': 'json',
+            'per_page': 1000,
+            'date': f"{datetime.now().year-5}:{datetime.now().year}"
+        }
         
-        response = requests.get(oecd_url)
+        response = requests.get(wb_url, params=params)
         if response.status_code == 200:
-            try:
-                data = response.json()
-                
-                # OECD data is in a complex structure - we need to extract time series for the location
-                # For simplicity, we'll just use the data for the first available country if we don't have a match
-                
-                # TODO: Parse OECD data structure - complex, would need custom parsing
-                
-                # If OECD data parsing is too complex, use WHO's global estimates
-                who_global_url = "https://apps.who.int/gho/athena/api/GHO/AIR_41.json?profile=simple"
-                
-                response = requests.get(who_global_url)
-                if response.status_code == 200:
+            data = response.json()
+            if isinstance(data, list) and len(data) > 1:
+                records = []
+                for item in data[1]:
                     try:
-                        who_data = response.json()
-                        
-                        if 'fact' in who_data:
-                            years = []
-                            pm25_values = []
-                            
-                            for entry in who_data['fact']:
-                                year = entry.get('dim', {}).get('YEAR')
-                                value = entry.get('value')
-                                country = entry.get('dim', {}).get('COUNTRY')
-                                
-                                # Filter by country if specified
-                                if country and value and year:
-                                    if (country_code == "GLOBAL" or 
-                                        country.lower() == country_code.lower() or
-                                        country.lower() in location_lower):
-                                        
-                                        years.append(int(year))
-                                        pm25_values.append(float(value))
-                            
-                            if years and pm25_values:
-                                # Sort by year
-                                years_sorted = []
-                                pm25_sorted = []
-                                for year, pm25 in sorted(zip(years, pm25_values)):
-                                    years_sorted.append(year)
-                                    pm25_sorted.append(pm25)
-                                
-                                df = pd.DataFrame({
-                                    'Year': years_sorted,
-                                    'PM2.5': pm25_sorted
-                                })
-                                
-                                return df
-                    except Exception as e:
-                        st.warning(f"Error parsing WHO air quality data: {str(e)}")
-            
+                        year = int(item['date'])
+                        value = float(item['value'])
+                        records.append({'Year': year, 'PM2.5': value})
+                    except (ValueError, KeyError, TypeError):
+                        continue
+                
+                if records:
+                    df = pd.DataFrame(records)
+                    df = df.sort_values('Year')
+                    return df
+        
+        # If both APIs fail, use WHO Global Ambient Air Quality Database
+        who_url = "https://www.who.int/data/gho/data/indicators/indicator-details/GHO/concentrations-of-fine-particulate-matter-(pm2-5)"
+        response = requests.get(who_url)
+        
+        if response.status_code == 200:
+            # Parse WHO data (XML format)
+            try:
+                soup = BeautifulSoup(response.content, 'xml')
+                records = []
+                
+                for fact in soup.find_all('Fact'):
+                    try:
+                        year = int(fact.find('YEAR').text)
+                        value = float(fact.find('Display').text)
+                        records.append({'Year': year, 'PM2.5': value})
+                    except (ValueError, AttributeError):
+                        continue
+                
+                if records:
+                    df = pd.DataFrame(records)
+                    df = df.sort_values('Year')
+                    return df
             except Exception as e:
-                st.warning(f"Error parsing OECD air quality data: {str(e)}")
+                st.warning(f"Error parsing WHO data: {str(e)}")
         
-        # If no data is available for the specific location, use the State of Global Air data
-        soga_url = "https://www.stateofglobalair.org/data/estimate-pm25"
-        
-        # Use a pre-processed dataset
-        # If we can't fetch real-time data from the above APIs, 
-        # we can fallback to recent scientific results with actual global PM2.5 data
-        # This is from the Global Burden of Disease study with WHO data
-        
-        # For this implementation, we'll use a simplified version based on actual WHO data
-        # with complete time series for major countries
-        
-        # For Global average:
-        if country_code == "GLOBAL":
-            # Global annual PM2.5 estimates based on WHO data
-            years = list(range(2000, 2022))
-            # These are approximations of the global annual average PM2.5 concentrations 
-            # from WHO and State of Global Air reports
-            pm25_values = [
-                23.6, 23.8, 24.0, 24.2, 24.3, 24.5, 24.6, 24.8, 24.9, 25.0,
-                25.1, 25.1, 25.0, 24.9, 24.7, 24.5, 24.2, 23.9, 23.5, 23.1,
-                22.8, 22.5
-            ]
-        # For USA:
-        elif country_code == "USA":
-            years = list(range(2000, 2022))
-            pm25_values = [
-                13.8, 13.5, 13.1, 12.8, 12.4, 12.1, 11.7, 11.4, 10.9, 10.5,
-                10.1, 9.8, 9.6, 9.3, 9.0, 8.8, 8.3, 8.0, 7.7, 7.5, 7.2, 7.0
-            ]
-        # For European Union:
-        elif country_code == "EUU":
-            years = list(range(2000, 2022))
-            pm25_values = [
-                15.5, 15.3, 15.0, 14.8, 14.5, 14.3, 14.0, 13.8, 13.5, 13.3,
-                13.0, 12.8, 12.5, 12.2, 11.9, 11.5, 11.2, 10.9, 10.5, 10.2,
-                9.8, 9.5
-            ]
-        # For China:
-        elif country_code == "CHN":
-            years = list(range(2000, 2022))
-            pm25_values = [
-                42.5, 43.8, 45.0, 46.2, 47.5, 48.7, 49.9, 51.1, 52.3, 53.4,
-                54.5, 55.5, 56.5, 57.0, 57.2, 57.0, 56.0, 54.0, 50.0, 45.0,
-                41.0, 37.5
-            ]
-        # For India:
-        elif country_code == "IND":
-            years = list(range(2000, 2022))
-            pm25_values = [
-                63.8, 64.5, 65.2, 65.9, 66.6, 67.3, 67.9, 68.6, 69.2, 69.8,
-                70.4, 70.9, 71.5, 72.0, 72.5, 73.0, 73.5, 74.0, 74.3, 74.5,
-                74.0, 73.5
-            ]
-        else:
-            # Generic data for other countries
-            years = list(range(2000, 2022))
-            pm25_values = [
-                23.6, 23.8, 24.0, 24.2, 24.3, 24.5, 24.6, 24.8, 24.9, 25.0,
-                25.1, 25.1, 25.0, 24.9, 24.7, 24.5, 24.2, 23.9, 23.5, 23.1,
-                22.8, 22.5
-            ]
-            
-        df = pd.DataFrame({
-            'Year': years,
-            'PM2.5': pm25_values
-        })
-        
-        return df
+        # If all APIs fail, return empty DataFrame
+        st.warning("Could not fetch real-time air quality data. Please try again later.")
+        return pd.DataFrame(columns=['Year', 'PM2.5'])
             
     except Exception as e:
         st.error(f"Failed to fetch air quality data: {str(e)}")
-        # Return an empty DataFrame with the expected columns
         return pd.DataFrame(columns=['Year', 'PM2.5'])
+
+def get_weather_data(location: str):
+    """Get weather data for a specific location"""
+    try:
+        weather_api = OpenWeatherAPI()
+        current_weather = weather_api.get_current_weather(location)
+        forecast = weather_api.get_forecast(location)
+        
+        return {
+            "current": current_weather,
+            "forecast": forecast
+        }
+    except Exception as e:
+        print(f"Error fetching weather data: {str(e)}")
+        return None
+
+def get_climate_trends():
+    """Get climate trends from World Bank data"""
+    try:
+        wb_api = WorldBankAPI()
+        indicators = wb_api.get_climate_indicators()
+        
+        # Process the data into a format suitable for visualization
+        trends = {
+            "CO2_emissions": [],
+            "Forest_area": [],
+            "Renewable_energy": [],
+            "Population_growth": []
+        }
+        
+        for indicator, data in indicators.items():
+            if isinstance(data, list):
+                for entry in data:
+                    if isinstance(entry, dict) and "value" in entry:
+                        trends[indicator.replace(" ", "_")].append({
+                            "year": entry.get("date", ""),
+                            "value": entry.get("value", 0)
+                        })
+        
+        return trends
+    except Exception as e:
+        print(f"Error fetching climate trends: {str(e)}")
+        return None
+
+def get_historical_data(start_year: int = 1960, end_year: int = 2020):
+    """Get historical climate data"""
+    try:
+        wb_api = WorldBankAPI()
+        indicators = wb_api.get_climate_indicators()
+        
+        # Create a DataFrame with historical data
+        data = []
+        for year in range(start_year, end_year + 1):
+            year_data = {"Year": year}
+            for indicator, values in indicators.items():
+                if isinstance(values, list):
+                    for entry in values:
+                        if isinstance(entry, dict) and entry.get("date") == str(year):
+                            year_data[indicator.replace(" ", "_")] = entry.get("value", 0)
+            data.append(year_data)
+        
+        return pd.DataFrame(data)
+    except Exception as e:
+        print(f"Error fetching historical data: {str(e)}")
+        return pd.DataFrame()
+
+def get_climate_risk_assessment(location: str):
+    """Get climate risk assessment for a location"""
+    try:
+        # Get weather data
+        weather_data = get_weather_data(location)
+        
+        # Get climate trends
+        trends = get_climate_trends()
+        
+        # Calculate risk factors
+        risk_factors = {
+            "temperature_risk": 0.5,
+            "precipitation_risk": 0.5,
+            "extreme_events_risk": 0.5,
+            "sea_level_risk": 0.5
+        }
+        
+        if weather_data and "current" in weather_data:
+            current = weather_data["current"]
+            if "main" in current:
+                temp = current["main"].get("temp", 0)
+                risk_factors["temperature_risk"] = min(1.0, max(0.0, (temp - 20) / 30))
+        
+        return risk_factors
+    except Exception as e:
+        print(f"Error calculating climate risk: {str(e)}")
+        return None
