@@ -9,6 +9,16 @@ st.set_page_config(
     layout="wide"
 )
 
+# Initialize session state variables if they don't exist
+if 'theme' not in st.session_state:
+    st.session_state.theme = 'light'
+    
+if 'location' not in st.session_state:
+    st.session_state.location = "London"
+    
+if 'news_page' not in st.session_state:
+    st.session_state.news_page = 1
+
 # Page header
 st.title("Climate News")
 st.write("Stay informed with the latest news and articles about climate change from around the world.")
@@ -77,10 +87,10 @@ try:
                         
                         # Article image if available
                         if article.get('image_url'):
-                            st.image(article['image_url'], use_column_width=True)
+                            st.image(article['image_url'], use_container_width=True)
                         else:
                             # Use a stock image if no image available
-                            st.image("https://images.unsplash.com/photo-1460925895917-afdab827c52f", use_column_width=True)
+                            st.image("https://images.unsplash.com/photo-1460925895917-afdab827c52f", use_container_width=True)
                         
                         # Article description
                         description = article.get('description', 'No description available')
@@ -112,10 +122,10 @@ try:
                         
                         # Article image if available
                         if article.get('image_url'):
-                            st.image(article['image_url'], use_column_width=True)
+                            st.image(article['image_url'], use_container_width=True)
                         else:
                             # Use a stock image if no image available
-                            st.image("https://images.unsplash.com/photo-1542744173-05336fcc7ad4", use_column_width=True)
+                            st.image("https://images.unsplash.com/photo-1542744173-05336fcc7ad4", use_container_width=True)
                         
                         # Article description
                         description = article.get('description', 'No description available')

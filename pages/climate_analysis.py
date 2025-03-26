@@ -11,6 +11,13 @@ st.set_page_config(
     layout="wide"
 )
 
+# Initialize session state variables if they don't exist
+if 'theme' not in st.session_state:
+    st.session_state.theme = 'light'
+    
+if 'location' not in st.session_state:
+    st.session_state.location = "London"
+
 # Page header
 st.title("Climate Analysis")
 st.write("Explore data visualizations and insights about our changing climate.")

@@ -13,6 +13,13 @@ st.set_page_config(
     layout="wide"
 )
 
+# Initialize session state variables if they don't exist
+if 'theme' not in st.session_state:
+    st.session_state.theme = 'light'
+    
+if 'location' not in st.session_state:
+    st.session_state.location = "London"
+
 # Page header
 st.title("Climate Risk Factors")
 st.write("Explore different risk factors associated with climate change and their potential impacts.")
@@ -214,7 +221,7 @@ except Exception as e:
 st.subheader("Water-Related Risks")
 
 # Display a relevant image
-st.image("https://images.unsplash.com/photo-1616164744857-1439f3dd5687", use_column_width=True)
+st.image("https://images.unsplash.com/photo-1616164744857-1439f3dd5687", use_container_width=True)
 
 water_tab1, water_tab2, water_tab3 = st.tabs(["Sea Level Rise", "Flooding", "Water Scarcity"])
 
