@@ -45,7 +45,7 @@ def fetch_weather(location):
 def fetch_forecast(location):
     """Fetch 5-day weather forecast for a location"""
     try:
-        url = f"https://api.openweathermap.org/data/2.5/forecast?q={location}&appid={NEWS_API_KEY}&units=metric"
+        url = f"https://api.openweathermap.org/data/2.5/forecast?q={location}&appid={WEATHER_API_KEY}&units=metric"
         response = requests.get(url)
         response.raise_for_status()
         return response.json()
